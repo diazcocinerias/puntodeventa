@@ -4,7 +4,6 @@ from pathlib import Path
 from collections import Counter
 from datetime import datetime
 from fpdf import FPDF
-import os
 
 # =========================
 # CONFIGURACIÓN GENERAL
@@ -22,7 +21,7 @@ if "cart" not in st.session_state:
 # =========================
 # FUNCIÓN PARA GENERAR BOLETA PDF
 # =========================
-def generar_boleta_pdf(items, total):
+def generar_boleta_pdf(items, total, filename="boleta.pdf"):
     now = datetime.now().strftime("%d/%m/%Y %I:%M %p")
 
     base_height = 60
@@ -76,17 +75,7 @@ def generar_boleta_pdf(items, total):
     pdf.set_font("Arial", "", 8)
     pdf.cell(0, 4, "Gracias por su compra", ln=True, align='C')
 
-    pdf.output("boleta.pdf")
-
-# =========================
-# FUNCIÓN PARA IMPRIMIR AUTOMÁTICO
-# =========================
-def imprimir_boleta(nombre_archivo):
-    try:
-        # Enviar archivo a impresión automática
-        os.startfile(nombre_archivo, "print")
-    except Exception as e:
-        st.error(f"❌ Error al imprimir automáticamente: {e}")
+    pdf.output(filename)
 
 # =========================
 # SECCIÓN PRODUCTOS
@@ -98,10 +87,9 @@ cols = st.columns(3)
 for idx, product in products.iterrows():
     with cols[idx % 3]:
         image_path = Path(f"images/{product['name']}.jpg")
-        
         if image_path.exists():
             st.image(str(image_path), width=200)
-        
+
         st.markdown(f"### {product['name']}")
         st.markdown(f"**${product['price']}**")
 
@@ -131,10 +119,25 @@ if st.session_state.cart:
     col1, col2 = st.columns(2)
     with col1:
         if st.button("🖨️ Emitir Boleta"):
-            generar_boleta_pdf(grouped_items, total)
-            imprimir_boleta("boleta.pdf")
-            st.success("✅ Boleta enviada directamente a impresión")
+            filename = "boleta.pdf"
+            generar_boleta_pdf(grouped_items, total, filename=filename)
+
+            # Leer el archivo PDF generado
+            with open(filename, "rb") as f:
+                pdf_data = f.read()
+
+            st.success("✅ Boleta generada correctamente.")
+
+            # Botón para abrir/descargar la boleta
+            st.download_button(
+                label="📄 Abrir o descargar boleta (Ctrl+P para imprimir)",
+                data=pdf_data,
+                file_name=filename,
+                mime="application/pdf"
+            )
+
             st.session_state.cart = []
+
     with col2:
         if st.button("❌ Cancelar Venta"):
             st.session_state.cart = []
